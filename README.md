@@ -2,7 +2,7 @@
 
 ## 소개
 
-algoforge는 고전적인 자료구조와 알고리즘을 처음부터 직접 구현해보는 개인 프로젝트입니다. 모든 컨테이너, 트리, 힙, 그래프 알고리즘을 손으로 짭니다. `collections.deque`, `heapq`, `networkx` 같은 건 쓰지 않습니다. 목표는 표준 라이브러리를 이기는 게 아니라, 이 구조들이 *왜* 이렇게 생겼는지 이해하는 것입니다.
+algoforge는 고전적인 자료구조와 알고리즘을 처음부터 직접 구현해보는 개인 프로젝트입니다. 모든 컨테이너, 트리, 힙, 그래프 알고리즘을 손으로 짭니다. `collections.deque`, `heapq`, `networkx` 같은 건 쓰지 않습니다. 목표는 표준 라이브러리를 이기는 게 아니라, 이 구조들이 _왜_ 이렇게 생겼는지 이해하는 것입니다.
 
 프로덕션용 성능이 필요하다면 표준 라이브러리나 `sortedcontainers`를 쓰세요. 이 레포는 내부 동작을 투명하게 보여주기 위해 존재합니다.
 
@@ -59,12 +59,12 @@ algoforge/
 
 ## 주제 × 패러다임 인덱스
 
-| | 분할 정복 | 동적 계획법 | 탐욕법 | 그래프 순회 |
-|---|---|---|---|---|
-| 그래프 | — | Floyd-Warshall | Kruskal, Prim | BFS, DFS, Dijkstra |
-| 문자열 | — | Edit distance | — | Aho-Corasick |
-| 기하 | 최근접 점쌍, 볼록 껍질 | — | — | — |
-| DP | — | LIS, Knapsack, CHT | — | — |
+|        | 분할 정복              | 동적 계획법        | 탐욕법        | 그래프 순회        |
+| ------ | ---------------------- | ------------------ | ------------- | ------------------ |
+| 그래프 | —                      | Floyd-Warshall     | Kruskal, Prim | BFS, DFS, Dijkstra |
+| 문자열 | —                      | Edit distance      | —             | Aho-Corasick       |
+| 기하   | 최근접 점쌍, 볼록 껍질 | —                  | —             | —                  |
+| DP     | —                      | LIS, Knapsack, CHT | —             | —                  |
 
 (구현이 추가될 때마다 칸을 채워 나갑니다.)
 
@@ -119,8 +119,8 @@ uv run pytest --cov=algoforge    # 커버리지 포함
 
 이 라이브러리를 만들면서 참조한 자료들입니다.
 
-- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms* (CLRS).
-- Sedgewick, Wayne. *Algorithms*.
+- Cormen, Leiserson, Rivest, Stein. _Introduction to Algorithms_ (CLRS).
+- Sedgewick, Wayne. _Algorithms_.
 - [cp-algorithms](https://cp-algorithms.com/) — 경쟁 프로그래밍 레퍼런스.
 - [KACTL](https://github.com/kth-competitive-programming/kactl) — KTH 알고리즘 라이브러리.
 - [graaf](https://github.com/bobluppes/graaf) — C++ 그래프 라이브러리 (구조적 영감).
