@@ -137,7 +137,7 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 | `neighbors(v)` | 인접 정점 |
 | `vertices()` | 전체 정점 |
 | `degree(v)` | 차수 |
-| `show(format=)` | Graphviz 뷰어 (`"pdf"` · `"svg"` · `"png"`) |
+| `show(highlight=, format=)` | Graphviz 뷰어. `highlight` 로 정점·간선 강조 |
 | `_repr_svg_()` | Jupyter 인라인 SVG 렌더링 |
 | `v in g` | 정점 포함 여부 |
 | `edge in g` | `contains_edge` 위임 |
@@ -290,7 +290,7 @@ A - {"weight": 3, "color": "red"} - B
 알고리즘은 결과값(`Path`, `Trail`, `Walk`, `WeightedGraph` 등)만 반환한다.
 시각화는 유저가 원본 그래프에 결과를 직접 하이라이팅하는 방식으로 제어한다.
 
-#### 하이라이팅 shortcut
+#### ✅ 하이라이팅 shortcut
 
 ```python
 path = dijkstra(g, A, B)
@@ -303,9 +303,11 @@ g.show(highlight=[path1, path2])   # 여러 결과, 색 자동 배분
 ```
 
 `highlight`는 `Walk`, `Path`, `Trail`, `_AbstractGraph` 를 모두 받는다.
-포함된 간선·정점을 자동으로 감지해 강조한다.
+포함된 간선·정점을 자동으로 감지해 강조한다. 단일 항목은 빨강, list는
+`red → blue → green → orange → ...` 팔레트를 순환한다. 무방향 그래프에서는
+간선 매칭이 방향 무관하게 동작한다.
 
-#### 세밀한 커스텀 스타일
+#### 🔲 세밀한 커스텀 스타일
 
 `highlight`로 부족할 때 람다로 직접 제어한다.
 

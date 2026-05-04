@@ -162,3 +162,28 @@ class TestPath:
         p = GPath([*(a - b - c).edges])
         assert isinstance(p, Trail)
         assert isinstance(p, Walk)
+
+
+class TestReverseChain:
+    """``A << B << C << D`` 가 ``D >> C >> B >> A`` 와 동일한 walk를 만드는지."""
+
+    def test_reverse_chain_unweighted(self, verts):
+        a, b, c, d = verts
+        back = a << b << c << d
+        fwd = d >> c >> b >> a
+        assert [(e.src, e.dst) for e in back.edges] == [(e.src, e.dst) for e in fwd.edges]
+
+    def test_reverse_chain_weighted(self, verts):
+        a, b, c, d = verts
+        back = a << 3 << b << 5 << c << 7 << d
+        fwd = d >> 7 >> c >> 5 >> b >> 3 >> a
+        assert [(e.src, e.dst, e.weight) for e in back.edges] == [
+            (e.src, e.dst, e.weight) for e in fwd.edges
+        ]
+
+    def test_reverse_chain_three_vertices(self, verts):
+        a, b, c, _ = verts
+        w = a << b << c
+        assert w.length == 2
+        assert w.edges[0].src == c and w.edges[0].dst == b
+        assert w.edges[1].src == b and w.edges[1].dst == a

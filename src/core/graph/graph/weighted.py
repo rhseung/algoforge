@@ -202,25 +202,36 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
                 for e in edges:
                     assert any(e2.dst.label == label for e2 in self._adj[e.dst.label])
 
-    def _to_graphviz(self) -> object:
+    def _to_graphviz(self, *, highlight: object = None) -> object:
         """Graphviz 렌더링 객체를 생성한다."""
         import graphviz
+
+        from core.graph.graph.abstract import (
+            _edge_highlight_attrs,
+            _node_highlight_attrs,
+            _normalize_highlight,
+            _patch_jupyter_transparent,
+        )
+
+        groups = _normalize_highlight(highlight)
+        undirected = self.kind != EdgeKind.DIRECTED
 
         dot = graphviz.Graph() if self.kind == EdgeKind.UNDIRECTED else graphviz.Digraph()
         dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
-            dot.node(v.label)
+            dot.node(v.label, **_node_highlight_attrs(v, groups))
         seen: set[frozenset] = set()
         for label, edges in self._adj.items():
             for e in edges:
-                if self.kind != EdgeKind.DIRECTED:
+                if undirected:
                     key: frozenset = frozenset([label, e.dst.label])
                     if key in seen:
                         continue
                     seen.add(key)
                 attrs = {"dir": "both"} if self.kind == EdgeKind.BIDIRECTED else {}
+                attrs.update(_edge_highlight_attrs(label, e.dst.label, undirected, groups))
                 dot.edge(label, e.dst.label, label=str(e.weight), **attrs)
-        return dot
+        return _patch_jupyter_transparent(dot)
 
     @classmethod
     def from_edge_list(

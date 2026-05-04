@@ -84,10 +84,13 @@ class Walk:
                 return NotImplemented
 
     def __lshift__(self, other: Vertex) -> Walk:
-        """``<<`` 연산자로 역방향 다음 정점을 이어 붙여 새로운 ``Walk`` 를 반환한다."""
+        """``<<`` 연산자로 역방향 다음 정점을 prepend 해 새로운 ``Walk`` 를 반환한다.
+
+        chain 의 왼쪽 끝(``self.edges[0].src``) 으로 향하는 새 간선을 앞에 붙인다.
+        """
         match other:
             case Vertex():
-                return Walk([*self.edges, Edge(other, self.edges[-1].dst, EdgeKind.DIRECTED)])
+                return Walk([Edge(other, self.edges[0].src, EdgeKind.DIRECTED), *self.edges])
             case _:
                 return NotImplemented
 
@@ -185,11 +188,14 @@ class WeightedWalk[W: Weight]:
                 return NotImplemented
 
     def __lshift__(self, other: W) -> _WeightedWalkBuilder[W]:
-        """``<<`` 연산자로 역방향 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다."""
+        """``<<`` 연산자로 역방향 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다.
+
+        역방향 체인이므로 chain 의 왼쪽 끝(``self.edges[0].src``) 을 연결점으로 한다.
+        """
         match other:
             case Weight():
-                last = self.edges[-1]
-                return _WeightedWalkBuilder(last.dst, other, EdgeKind.DIRECTED, list(self.edges))
+                first = self.edges[0]
+                return _WeightedWalkBuilder(first.src, other, EdgeKind.DIRECTED, list(self.edges))
             case _:
                 return NotImplemented
 

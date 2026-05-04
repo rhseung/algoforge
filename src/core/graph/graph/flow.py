@@ -135,7 +135,9 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
         self._num_edges -= sum(1 for e in self._adj[label] if e.forward)
         for other_label in self._adj:
             if other_label != label:
-                removed = sum(1 for e in self._adj[other_label] if e.dst.label == label and e.forward)
+                removed = sum(
+                    1 for e in self._adj[other_label] if e.dst.label == label and e.forward
+                )
                 self._num_edges -= removed
                 self._adj[other_label] = [e for e in self._adj[other_label] if e.dst.label != label]
         del self._adj[label]
@@ -205,19 +207,29 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
                 assert e.reverse_edge is not None
                 assert e.reverse_edge.reverse_edge is e
 
-    def _to_graphviz(self) -> object:
+    def _to_graphviz(self, *, highlight: object = None) -> object:
         """Graphviz 렌더링 객체를 생성한다. 정방향 간선만 표시한다."""
         import graphviz
+
+        from core.graph.graph.abstract import (
+            _edge_highlight_attrs,
+            _node_highlight_attrs,
+            _normalize_highlight,
+            _patch_jupyter_transparent,
+        )
+
+        groups = _normalize_highlight(highlight)
 
         dot = graphviz.Digraph()
         dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
-            dot.node(v.label)
+            dot.node(v.label, **_node_highlight_attrs(v, groups))
         for edges in self._adj.values():
             for e in edges:
                 if e.forward:
-                    dot.edge(e.src.label, e.dst.label, label=f"{e.flow}/{e.capacity}")
-        return dot
+                    attrs = _edge_highlight_attrs(e.src.label, e.dst.label, False, groups)
+                    dot.edge(e.src.label, e.dst.label, label=f"{e.flow}/{e.capacity}", **attrs)
+        return _patch_jupyter_transparent(dot)
 
     @classmethod
     def from_edge_list(

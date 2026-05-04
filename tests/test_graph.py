@@ -1231,3 +1231,114 @@ class TestIsomorphism:
         gu = UnweightedGraph()
         gu.add_edge(a, b)
         assert not gw.is_isomorphic_to(gu)
+
+
+class TestHighlight:
+    def test_single_walk_highlight(self, verts):
+        """UNDIRECTED walk highlight는 색만 입히고 화살표는 안 그린다."""
+        from core.graph.walk import Walk
+
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        src = g._to_graphviz(highlight=Walk([a - b, b - c])).source
+        assert 'a [color=red penwidth=2]' in src
+        assert 'b [color=red penwidth=2]' in src
+        assert 'c [color=red penwidth=2]' in src
+        assert 'a -- b [color=red penwidth=2]' in src
+        assert 'b -- c [color=red penwidth=2]' in src
+        assert 'dir=' not in src  # UNDIRECTED highlight → no arrow
+
+    def test_directed_walk_traversal_direction(self, verts):
+        """DIRECTED walk highlight는 무방향 그래프 위에 화살표 방향을 표시한다."""
+        from core.graph.walk import Walk
+
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        # Walk(>>): graph edge와 같은 방향 → forward
+        src_fwd = g._to_graphviz(highlight=Walk([a >> b])).source
+        assert 'a -- b [color=red dir=forward' in src_fwd
+        # Walk(>>): graph edge와 반대 방향 → back
+        src_back = g._to_graphviz(highlight=Walk([b >> a])).source
+        assert 'a -- b [color=red dir=back' in src_back
+
+    def test_bidirected_walk_highlight(self, verts):
+        from core.graph.walk import Walk
+
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        src = g._to_graphviz(highlight=Walk([a & b])).source
+        assert 'a -- b [color=red dir=both' in src
+
+    def test_directed_subgraph_highlight_on_undirected(self, verts):
+        """DIRECTED subgraph (예: BFS 트리) 를 무방향 그래프에 highlight 하면 화살표가 표시된다."""
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        tree = UnweightedGraph(kind=EdgeKind.DIRECTED)
+        tree.add_edge(a, b)
+        tree.add_edge(b, c)
+        src = g._to_graphviz(highlight=tree).source
+        assert 'a -- b [color=red dir=forward' in src
+        assert 'b -- c [color=red dir=forward' in src
+
+    def test_directed_edge_orientation_strict(self, verts):
+        from core.graph.walk import Walk
+
+        a, b, _, _ = verts
+        g = UnweightedGraph(kind=EdgeKind.DIRECTED)
+        g.add_edge(a, b)
+        src_match = g._to_graphviz(highlight=Walk([a >> b])).source
+        assert 'a -> b [color=red penwidth=2]' in src_match
+        # 반대 방향 walk는 매칭되지 않음 (해당 walk의 간선이 그래프에 없으니 정점만 색칠)
+        src_no_match = g._to_graphviz(highlight=Walk([b >> a])).source
+        assert 'a -> b [color=red' not in src_no_match
+
+    def test_multiple_highlight_color_cycle(self, verts):
+        from core.graph.walk import Walk
+
+        a, b, c, d = verts
+        g = UnweightedGraph(a - b - c - d)
+        src = g._to_graphviz(highlight=[Walk([a - b]), Walk([c - d])]).source
+        assert 'a -- b [color=red' in src
+        assert 'c -- d [color=blue' in src
+
+    def test_subgraph_highlight(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        sub = UnweightedGraph()
+        sub.add_edge(a, b)
+        src = g._to_graphviz(highlight=sub).source
+        assert 'a -- b [color=red' in src
+        assert 'b -- c [color=red' not in src
+
+    def test_weighted_highlight_keeps_label(self, verts):
+        from core.graph.walk import Walk
+
+        a, b, c, _ = verts
+        gw = WeightedGraph(a - 3 - b - 5 - c)
+        src = gw._to_graphviz(highlight=Walk([a - b])).source
+        assert 'label=3' in src
+        assert 'color=red' in src
+
+    def test_flow_highlight(self, verts):
+        from core.graph.walk import Walk
+
+        a, b, c, _ = verts
+        f = FlowGraph(a >> 10 >> b >> 5 >> c)
+        src = f._to_graphviz(highlight=Walk([a >> b])).source
+        assert 'a -> b' in src
+        assert 'color=red' in src
+        assert '0/10' in src  # capacity label preserved
+
+    def test_no_highlight_unchanged(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        src = g._to_graphviz().source
+        assert 'color=red' not in src
+        assert 'penwidth=' not in src
+
+    def test_invalid_highlight_type(self, verts):
+        a, b, _, _ = verts
+        g = UnweightedGraph()
+        g.add_edge(a, b)
+        with pytest.raises(TypeError, match="highlight"):
+            g._to_graphviz(highlight=42)

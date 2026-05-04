@@ -54,12 +54,16 @@ class Edge:
                 return NotImplemented
 
     def __lshift__(self, other: Vertex) -> Walk:
-        """``<<`` 연산자로 역방향 다음 간선을 이어 붙여 ``Walk`` 를 반환한다."""
+        """``<<`` 연산자로 역방향 다음 간선을 prepend 해 ``Walk`` 를 반환한다.
+
+        ``A << B << C`` 는 ``C → B → A`` 와 같다. 새 정점 ``C`` 는 chain 의 왼쪽 끝
+        ``B`` 로 향하는 간선 ``C → B`` 를 만들어 기존 edge 앞에 붙는다.
+        """
         from core.graph.walk import Walk
 
         match other:
             case Vertex():
-                return Walk([self, Edge(other, self.dst, EdgeKind.DIRECTED)])
+                return Walk([Edge(other, self.src, EdgeKind.DIRECTED), self])
             case _:
                 return NotImplemented
 
@@ -121,10 +125,13 @@ class WeightedEdge[W: Weight]:
                 return NotImplemented
 
     def __lshift__(self, other: W) -> _WeightedWalkBuilder[W]:
-        """``<<`` 연산자로 역방향 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다."""
+        """``<<`` 연산자로 역방향 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다.
+
+        역방향 체인이므로 빌더의 연결점은 chain 의 왼쪽 끝(``self.src``) 이다.
+        """
         match other:
             case Weight():
-                return _WeightedWalkBuilder(self.dst, other, EdgeKind.DIRECTED, [self])
+                return _WeightedWalkBuilder(self.src, other, EdgeKind.DIRECTED, [self])
             case _:
                 return NotImplemented
 
@@ -242,13 +249,16 @@ class _WeightedWalkBuilder[W: Weight]:
                 return NotImplemented
 
     def __lshift__(self, other: Vertex) -> WeightedWalk[W]:
-        """``<<`` 연산자로 도착 정점을 받아 역방향 ``WeightedWalk`` 를 완성한다."""
+        """``<<`` 연산자로 도착 정점을 받아 역방향 ``WeightedWalk`` 를 완성한다.
+
+        새 간선 ``other → self.src`` 를 chain 앞에 prepend 한다.
+        """
         from core.graph.walk import WeightedWalk
 
         match other:
             case Vertex():
                 return WeightedWalk(
-                    [*self._prior, WeightedEdge(other, self.src, EdgeKind.DIRECTED, self.weight)]
+                    [WeightedEdge(other, self.src, EdgeKind.DIRECTED, self.weight), *self._prior]
                 )
             case _:
                 return NotImplemented

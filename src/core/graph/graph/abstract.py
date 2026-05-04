@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self, overload
 
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.endpoints import HasEndpoints
@@ -150,8 +150,11 @@ class _AbstractGraph[E: HasEndpoints](ABC):
         ...
 
     @abstractmethod
-    def _to_graphviz(self) -> Any:
-        """Graphviz 렌더링 객체를 반환한다."""
+    def _to_graphviz(self, *, highlight: object = None) -> Any:
+        """Graphviz 렌더링 객체를 반환한다.
+
+        ``highlight`` 가 주어지면 포함된 정점·간선을 색으로 강조한다.
+        """
         ...
 
     @property
@@ -159,9 +162,20 @@ class _AbstractGraph[E: HasEndpoints](ABC):
         """인접 행렬. ``to_adjacency_matrix()`` 와 동일."""
         return self.to_adjacency_matrix()
 
-    def show(self, *, format: Literal["pdf", "svg", "png"] = "png") -> None:
-        """그래프를 렌더링해 시스템 뷰어로 연다."""
-        dot = self._to_graphviz()
+    def show(
+        self,
+        *,
+        highlight: object = None,
+        format: Literal["pdf", "svg", "png"] = "png",
+    ) -> None:
+        """그래프를 렌더링해 시스템 뷰어로 연다.
+
+        Args:
+            highlight: 강조할 ``Walk``/``Path``/``Trail``/``_AbstractGraph`` 또는 그 list.
+                list로 여러 개 주면 색이 자동 배분된다.
+            format: 출력 포맷.
+        """
+        dot = self._to_graphviz(highlight=highlight)
         dot.format = format
         dot.view(cleanup=True)
 
@@ -337,7 +351,7 @@ class _AbstractGraph[E: HasEndpoints](ABC):
         if self.num_vertices != other.num_vertices or self.num_edges != other.num_edges:
             return False
 
-        def attrs_match(e1: object, e2: object) -> bool:
+        def attrs_match(e1: Any, e2: Any) -> bool:
             if isinstance(e1, WeightedEdge) and isinstance(e2, WeightedEdge):
                 return e1.weight == e2.weight
             if isinstance(e1, FlowEdge) and isinstance(e2, FlowEdge):
@@ -396,7 +410,6 @@ class _AbstractGraph[E: HasEndpoints](ABC):
 
         return backtrack(0)
 
-
     def __neg__(self) -> Self:
         """``-g`` — :meth:`reverse` 위임."""
         return self.reverse()
@@ -437,6 +450,11 @@ class _AbstractGraph[E: HasEndpoints](ABC):
                 return NotImplemented  # type: ignore[return-value]
         return self
 
+    @overload
+    def __getitem__(self, key: Vertex) -> list[Vertex]: ...
+    @overload
+    def __getitem__(self, key: tuple[Vertex, Vertex]) -> E: ...
+
     def __getitem__(self, key: object) -> object:
         """``g[v]`` → neighbors, ``g[u, v]`` → :meth:`get_edge`."""
         from core.graph.primitives.vertex import Vertex
@@ -453,6 +471,121 @@ class _AbstractGraph[E: HasEndpoints](ABC):
     def __iter__(self) -> Iterator[Vertex]:
         """``for v in graph`` 로 모든 정점을 순회한다."""
         return iter(self.vertices())
+
+
+_HIGHLIGHT_COLORS = ["red", "blue", "green", "orange", "purple", "brown", "magenta", "teal"]
+
+
+class _HighlightGroup:
+    """단일 하이라이트 항목에서 추출한 정점·간선 집합, 색, ``EdgeKind``."""
+
+    __slots__ = ("color", "edges", "kind", "vertices")
+
+    def __init__(
+        self,
+        color: str,
+        vertices: set[Vertex],
+        edges: set[tuple[str, str]],
+        kind: EdgeKind,
+    ) -> None:
+        self.color = color
+        self.vertices = vertices
+        self.edges = edges
+        self.kind = kind
+
+
+def _extract_highlight_endpoints(
+    item: object,
+) -> tuple[set[Vertex], set[tuple[str, str]], EdgeKind]:
+    """하이라이트 항목에서 정점·간선 라벨 쌍 집합과 ``EdgeKind`` 를 추출한다."""
+    from core.graph.walk import Walk, WeightedWalk
+
+    if isinstance(item, _AbstractGraph):
+        verts = set(item.vertices())
+        edges = {(e.src.label, e.dst.label) for v in item.vertices() for e in item.out_edges(v)}
+        return verts, edges, item.kind
+    if isinstance(item, (Walk, WeightedWalk)):
+        verts: set[Vertex] = set()
+        edges = set()
+        for e in item.edges:
+            verts.add(e.src)
+            verts.add(e.dst)
+            edges.add((e.src.label, e.dst.label))
+        return verts, edges, item.kind
+    raise TypeError(f"highlight는 Walk/Path/Trail/_AbstractGraph만 지원, got {type(item).__name__}")
+
+
+def _normalize_highlight(highlight: object) -> list[_HighlightGroup]:
+    """``highlight`` 인자를 ``_HighlightGroup`` 목록으로 정규화한다.
+
+    단일 항목은 첫 색깔로 칠하고, list는 색깔 팔레트를 순환하며 배분한다.
+    """
+    if highlight is None:
+        return []
+    items = highlight if isinstance(highlight, list) else [highlight]
+    return [
+        _HighlightGroup(
+            _HIGHLIGHT_COLORS[i % len(_HIGHLIGHT_COLORS)], *_extract_highlight_endpoints(item)
+        )
+        for i, item in enumerate(items)
+    ]
+
+
+def _patch_jupyter_transparent(dot: Any) -> Any:
+    """Jupyter 인라인 렌더링에서 다크 테마 배경이 보이지 않도록 SVG에
+    ``style="background:transparent;"`` 를 주입한다.
+
+    graphviz ``Source`` / ``Graph`` / ``Digraph`` 의 ``_repr_image_svg_xml`` 을
+    감싸는 형태라 ``dot.source`` 등 다른 API는 그대로다.
+    """
+    orig = dot._repr_image_svg_xml
+    dot._repr_image_svg_xml = lambda: orig().replace(
+        "<svg ", '<svg style="background:transparent;" ', 1
+    )
+    return dot
+
+
+def _node_highlight_attrs(v: Vertex, groups: list[_HighlightGroup]) -> dict[str, str]:
+    """정점에 적용할 graphviz 속성. 해당 그룹이 없으면 빈 dict."""
+    for g in groups:
+        if v in g.vertices:
+            return {"color": g.color, "penwidth": "2"}
+    return {}
+
+
+def _edge_highlight_attrs(
+    src_label: str, dst_label: str, undirected: bool, groups: list[_HighlightGroup]
+) -> dict[str, str]:
+    """간선에 적용할 graphviz 속성. 해당 그룹이 없으면 빈 dict.
+
+    무방향(또는 양방향) 그래프 edge 위에 highlight 가 올라갈 때, **highlight 객체의
+    ``kind``** 가 화살표 표시를 결정한다 (그래프의 kind를 override):
+
+    - highlight ``DIRECTED``: 매칭 방향에 따라 ``dir=forward`` (같은 방향) 또는
+      ``dir=back`` (반대 방향)
+    - highlight ``BIDIRECTED``: ``dir=both``
+    - highlight ``UNDIRECTED``: ``dir`` 속성 없음 (색만)
+
+    DIRECTED 그래프(graphviz Digraph)는 기본적으로 화살표가 그려지므로 ``dir`` 을
+    추가하지 않는다.
+    """
+    for g in groups:
+        if (src_label, dst_label) in g.edges:
+            attrs = {"color": g.color, "penwidth": "2"}
+            if undirected:
+                if g.kind == EdgeKind.DIRECTED:
+                    attrs["dir"] = "forward"
+                elif g.kind == EdgeKind.BIDIRECTED:
+                    attrs["dir"] = "both"
+            return attrs
+        if undirected and (dst_label, src_label) in g.edges:
+            attrs = {"color": g.color, "penwidth": "2"}
+            if g.kind == EdgeKind.DIRECTED:
+                attrs["dir"] = "back"
+            elif g.kind == EdgeKind.BIDIRECTED:
+                attrs["dir"] = "both"
+            return attrs
+    return {}
 
 
 def _wl_refine_pair(
@@ -484,7 +617,7 @@ def _wl_refine_pair(
     from core.graph.primitives.edge import WeightedEdge
     from core.graph.primitives.flow_edge import FlowEdge
 
-    def edge_attr(e: object) -> object:
+    def edge_attr(e: Any) -> object:
         if isinstance(e, WeightedEdge):
             return ("w", e.weight)
         if isinstance(e, FlowEdge):
