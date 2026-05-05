@@ -11,7 +11,7 @@ lemma는 자료구조와 알고리즘을 밑바닥부터 직접 구현하는 개
   - 균형 트리: RB 트리, AVL 트리, 트립, 스플레이 트리, 스킵 리스트
   - 힙: 이진 힙, 페어링 힙, 좌편향 힙, 피보나치 힙
   - 기타: 유니온 파인드, 펜윅 트리, 세그먼트 트리, 트라이
-  - 그래프: 간결한 DSL을 갖춘 경량 그래프 추상화 (Walk, Graph, FlowGraph). DSL 문법은 [`src/core/graph/README.md`](src/core/graph/README.md), 세부 설계는 [`src/core/graph/design.md`](src/core/graph/design.md) 참고.
+  - 그래프: 간결한 DSL을 갖춘 경량 그래프 추상화 (Walk, Graph, FlowGraph). DSL 문법은 [`core/graph/README.md`](core/graph/README.md), 세부 설계는 [`core/graph/design.md`](core/graph/design.md) 참고.
 - **알고리즘**
   - 그래프: BFS/DFS, 최단 경로(Dijkstra, Bellman-Ford, Floyd-Warshall), MST(Kruskal, Prim), SCC, 최대 유량, 이분 매칭
   - 문자열: KMP, Z-알고리즘, Aho-Corasick, 접미사 배열, Manacher
@@ -26,16 +26,16 @@ lemma는 자료구조와 알고리즘을 밑바닥부터 직접 구현하는 개
 
 ```
 lemma/
-├── src/
-│   ├── core/                           # 자료구조 (알고리즘 의존 없음)
-│   │   ├── graph/                      # Walk, Graph, FlowGraph, DSL
-│   │   ├── containers/                 # STL 스타일 컨테이너 (동적 배열, 덱, 연결 리스트, 해시 맵)
-│   │   ├── trees/                      # 균형 BST (RB, AVL, 트립, 스플레이, 스킵 리스트)
-│   │   ├── heaps/                      # 힙 (이진, 페어링, 좌편향, 피보나치)
-│   │   ├── union_find.py
-│   │   ├── fenwick.py
-│   │   ├── segment_tree.py
-│   │   └── trie.py
+├── core/                               # 자료구조 (알고리즘 의존 없음)
+│   ├── graph/                          # Walk, Graph, FlowGraph, DSL
+│   ├── containers/                     # STL 스타일 컨테이너 (동적 배열, 덱, 연결 리스트, 해시 맵)
+│   ├── trees/                          # 균형 BST (RB, AVL, 트립, 스플레이, 스킵 리스트)
+│   ├── heaps/                          # 힙 (이진, 페어링, 좌편향, 피보나치)
+│   ├── union_find.py
+│   ├── fenwick.py
+│   ├── segment_tree.py
+│   └── trie.py
+├── algorithms/                         # 알고리즘 (core를 import할 수 있음)
 │   ├── graph/                          # 그래프 알고리즘
 │   │   ├── traversal.py                # BFS, DFS
 │   │   ├── shortest_path.py            # Dijkstra, Bellman-Ford, Floyd-Warshall
@@ -77,7 +77,7 @@ lemma/
 설계 원칙:
 
 - `core/`에는 알고리즘을 모르는 순수 자료구조만 둡니다.
-- 알고리즘 레이어(`graph/`, `string/` 등)는 `core/`를 import할 수 있지만, 알고리즘 레이어끼리는 서로 참조하지 않습니다.
+- 알고리즘 레이어(`algorithms/graph`, `algorithms/string` 등)는 `core/`를 import할 수 있지만, 알고리즘 레이어끼리는 서로 참조하지 않습니다.
 - 알고리즘은 메서드가 아닌 함수로 구현합니다. `g.dijkstra(src)`가 아니라 `dijkstra(g, src)`. 편의를 위해 `Graph`에 얇은 메서드 래퍼를 제공합니다.
 - 렌더링과 애니메이션은 알고리즘 로직과 분리됩니다. 단계별 시각화가 필요한 알고리즘은 제너레이터 버전(예: `dijkstra_steps`)을 따로 제공합니다.
 
@@ -112,7 +112,7 @@ uv run ruff check --fix .        # 자동 수정 가능한 부분 수정
 uv run ruff format .             # 포맷
 uv run pyrefly check             # 타입 체크
 uv run pytest                    # 테스트 실행
-uv run pytest --cov=lemma    # 커버리지 포함
+uv run pytest --cov=core --cov=algorithms  # 커버리지 포함
 ```
 
 ## 테스트 철학
